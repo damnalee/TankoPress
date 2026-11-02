@@ -1,5 +1,7 @@
 # TankoPress
 
+[![CI](https://github.com/damnalee/TankoPress/actions/workflows/ci.yml/badge.svg)](https://github.com/damnalee/TankoPress/actions/workflows/ci.yml)
+
 TankoPress is a FastAPI and Playwright application for turning manga catalogs into downloadable PDF exports. Paste a catalog URL, choose chapters, preview the range, and export either one merged PDF or a ZIP containing one PDF per chapter.
 
 ## Screenshots
