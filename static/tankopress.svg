@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="TankoPress">
+  <rect width="64" height="64" rx="14" fill="#26324A"/>
+  <path d="M17 16h27a4 4 0 0 1 4 4v25H21a4 4 0 0 1-4-4V16Z" fill="#FFFDF8"/>
+  <path d="M21 45V20h27" fill="none" stroke="#FF7DA8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M34 29v18M26 39l8 8 8-8" fill="none" stroke="#FF8A68" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TankoPress - Chapter Export Studio</title>
+  <link rel="icon" type="image/svg+xml" href="/static/tankopress.svg">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Yomogi&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = { theme: { extend: { colors: { paper: '#FFFDF8', sakura: '#FF7DA8', coral: '#FF8A68', inkblue: '#26324A' }, fontFamily: { sans: ['DM Sans', 'sans-serif'], hand: ['Yomogi', 'cursive'], mono: ['JetBrains Mono', 'monospace'] } } } }
+  </script>
+  <style>
+    [x-cloak] { display: none !important; }
+    body { background-color: #fffaf3; background-image: radial-gradient(circle at 12% 18%, rgba(255,125,168,.18), transparent 18rem), radial-gradient(circle at 88% 10%, rgba(115,205,225,.16), transparent 20rem), linear-gradient(rgba(38,50,74,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(38,50,74,.035) 1px, transparent 1px); background-size: auto, auto, 26px 26px, 26px 26px; color: #26324A; }
+    .glass { background: rgba(255,255,255,.94); backdrop-filter: blur(18px); box-shadow: 0 18px 50px rgba(83,63,90,.1); }
+    .anime-glow { box-shadow: 0 9px 24px rgba(255,125,168,.22); }
+    input[type="checkbox"] { accent-color: #FF7DA8; }
+    .progress-fill { transition: width .35s ease; }
+    .chapter-row { transition: border-color .18s ease, background-color .18s ease, transform .18s ease, box-shadow .18s ease; }
+    .chapter-row:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(83,63,90,.08); }
+    ::selection { background: #FFB5CD; color: #26324A; }
+    @keyframes enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes bob { 0%,100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-9px) rotate(-1deg); } }
+    @keyframes blink { 0%,92%,100% { transform: scaleY(1); } 95% { transform: scaleY(.08); } }
+    @keyframes drift { from { transform: rotate(6deg) translateY(0); } to { transform: rotate(-2deg) translateY(-8px); } }
+    .enter { animation: enter .55s cubic-bezier(.2,.7,.2,1) both; }
+    .hero-title { font-family: 'Yomogi', cursive; letter-spacing: 0; }
+    .paper-stack { animation: bob 4s ease-in-out infinite; }
+    .spark-face .eye { transform-origin: center; animation: blink 5.2s infinite; }
+    .floating-note { animation: drift 3.4s ease-in-out infinite alternate; }
+    .url-console:focus-within { border-color: #ff7da8; box-shadow: 0 0 0 4px rgba(255,125,168,.12); }
+    .page-loader { transition: opacity .55s ease, visibility .55s ease; }
+    .page-loader.is-leaving { opacity: 0; visibility: hidden; }
+    .loader-book { animation: loaderPulse 1.15s ease-in-out infinite alternate; }
+    @keyframes loaderPulse { from { transform: translateY(0) rotate(-2deg); } to { transform: translateY(-10px) rotate(2deg); } }
+    #press-scene { touch-action: pan-y; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body class="min-h-screen bg-paper font-sans text-inkblue" x-data="mangaPDF()" x-init="init()">
+  <div id="page-loader" class="page-loader fixed inset-0 z-[100] grid place-items-center bg-[#fffaf3]">
+    <div class="text-center">
+      <div class="loader-book mx-auto grid h-[102px] w-[82px] place-items-center rounded-sm border-[3px] border-inkblue bg-white shadow-[10px_10px_0_#ffb5cd]">
+        <img src="/static/tankopress.svg" class="h-12 w-12" alt="">
+      </div>
+      <p class="mt-6 hero-title text-3xl text-inkblue">warming up the press</p>
+      <div class="mx-auto mt-4 h-1.5 w-44 overflow-hidden rounded-full bg-pink-100"><div id="loader-bar" class="h-full bg-sakura transition-all duration-700" style="width:12%"></div></div>
+      <p id="loader-status" class="mt-3 font-mono text-[10px] uppercase text-slate-400">Opening the cover...</p>
+    </div>
+  </div>
+  <div class="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 lg:px-8">
+    <header class="mb-5 flex items-center justify-between border-b border-pink-100/80 pb-5">
+      <a href="/" class="flex items-center gap-3" aria-label="TankoPress home">
+        <img src="/static/tankopress.svg" class="h-11 w-11 rotate-[-3deg] rounded-[8px] shadow-[0_8px_20px_rgba(255,125,168,.22)]" alt="TankoPress">
+        <div>
+          <h1 class="hero-title text-2xl font-bold text-inkblue">TankoPress</h1>
+          <p class="font-mono text-[10px] uppercase text-slate-400">Chapter Export Studio</p>
+        </div>
+      </a>
+      <div class="flex items-center gap-2 rounded-full border border-pink-100 bg-white px-3 py-2 font-mono text-[11px] text-slate-500 shadow-sm">
+        <span class="h-1.5 w-1.5 rounded-full" :class="analyzing ? 'bg-amber-400 animate-pulse' : 'bg-sakura'"></span>
+        <span x-text="analyzing ? 'Gathering chapters...' : jobActive ? 'Printing pages...' : 'Ready to press'"></span>
+      </div>
+    </header>
+
+    <section x-show="!manga && !loadingManga" x-cloak class="enter relative mb-8 grid min-h-[410px] overflow-hidden border border-pink-100 bg-[#fffefe]/90 lg:grid-cols-[1.05fr_.95fr]" style="box-shadow: 0 24px 70px rgba(83,63,90,.12)">
+      <div class="relative z-10 flex flex-col justify-center px-6 py-10 sm:px-10 lg:px-14">
+        <p class="mb-4 w-fit bg-[#26324A] px-3 py-1 font-mono text-[10px] uppercase text-white">Manga shelf to PDF press</p>
+        <h2 class="hero-title max-w-[760px] text-[clamp(54px,7vw,96px)] leading-[.82] text-inkblue">Make every<br><span class="text-sakura">chapter yours.</span></h2>
+        <p class="mt-6 max-w-xl text-sm leading-6 text-slate-500 sm:text-base">Paste a catalog link. Choose your chapters. TankoPress turns them into one neat book or a tidy chapter-by-chapter ZIP.</p>
+        <form class="url-console mt-7 flex max-w-[720px] flex-col gap-2 border border-pink-100 bg-white p-2 transition sm:flex-row" @submit.prevent="analyze()">
+          <div class="relative flex min-w-0 flex-1 items-center">
+            <i data-lucide="link-2" class="pointer-events-none absolute left-4 h-4 w-4 text-sakura"></i>
+            <input x-model="url" type="url" required placeholder="Paste manga catalog URL" class="h-12 w-full pl-11 pr-3 font-mono text-sm outline-none placeholder:text-slate-300">
+          </div>
+          <button type="submit" :disabled="analyzing" class="anime-glow flex h-12 items-center justify-center gap-2 bg-sakura px-5 font-bold text-white transition hover:-translate-y-0.5 hover:bg-pink-500 disabled:opacity-70">
+            <i data-lucide="sparkles" class="h-4 w-4"></i><span x-text="analyzing ? 'Reading...' : 'Press chapters'" ></span>
+          </button>
+        </form>
+      </div>
+      <div class="relative min-h-[340px] overflow-hidden bg-[#dff5f4]">
+        <canvas id="press-scene" class="absolute inset-0 h-full w-full" aria-label="Interactive floating manga book"></canvas>
+        <div class="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-[repeating-linear-gradient(90deg,#26324A_0,#26324A_2px,transparent_2px,transparent_24px)] opacity-10"></div>
+        <div class="floating-note pointer-events-none absolute right-8 top-8 rotate-6 border-2 border-inkblue bg-[#fff49a] px-3 py-2 font-mono text-[11px] shadow-[5px_5px_0_#26324A]">move your cursor!</div>
+        <div class="pointer-events-none absolute bottom-6 left-6 grid h-14 w-14 rotate-[-8deg] place-items-center rounded-full bg-coral text-white shadow-[5px_5px_0_#26324A]"><i data-lucide="book-heart" class="h-7 w-7"></i></div>
+      </div>
+    </section>
+
+    <section x-show="!manga && !loadingManga" x-cloak class="mb-7 grid gap-3 sm:grid-cols-3 enter" style="animation-delay:.12s">
+      <div class="border border-pink-100 bg-white px-5 py-4"><span class="font-mono text-[10px] text-sakura">01 / FIND</span><p class="mt-2 font-bold">Paste any manga catalog link</p></div>
+      <div class="border border-pink-100 bg-white px-5 py-4"><span class="font-mono text-[10px] text-coral">02 / CHOOSE</span><p class="mt-2 font-bold">Pick one chapter or a whole run</p></div>
+      <div class="border border-pink-100 bg-white px-5 py-4"><span class="font-mono text-[10px] text-[#53a9b6]">03 / PRESS</span><p class="mt-2 font-bold">Save a PDF or chapter ZIP</p></div>
+    </section>
+
+    <section x-show="manga || loadingManga" x-cloak class="glass mb-6 border border-pink-100 p-3 enter">
+      <form class="flex flex-col gap-2 lg:flex-row" @submit.prevent="analyze()">
+        <div class="relative flex min-w-0 flex-1 items-center">
+          <i data-lucide="link-2" class="pointer-events-none absolute left-4 h-4 w-4 text-slate-400"></i>
+          <input x-model="url" type="url" required placeholder="Paste your manga chapter or catalog URL" class="h-12 w-full border border-slate-200 bg-white px-11 pr-28 font-mono text-sm text-inkblue outline-none transition placeholder:text-slate-400 focus:border-sakura focus:ring-2 focus:ring-pink-100">
+          <button type="button" @click="pasteUrl" class="absolute right-2 flex h-8 items-center gap-1.5 rounded-full bg-pink-50 px-3 font-mono text-[10px] text-pink-600 hover:bg-pink-100" title="Paste from clipboard"><i data-lucide="clipboard" class="h-3.5 w-3.5"></i> PASTE</button>
+        </div>
+        <div x-show="detectedSite" x-cloak class="hidden items-center border border-[#303039] px-4 font-mono text-xs text-zinc-400 lg:flex"><span class="mr-2 h-1.5 w-1.5 rounded-full bg-mint"></span><span x-text="detectedSite"></span></div>
+        <button type="submit" :disabled="analyzing" class="anime-glow flex h-12 min-w-44 items-center justify-center gap-2 rounded-full bg-sakura px-6 font-bold text-white transition hover:bg-pink-500 disabled:cursor-wait disabled:opacity-70">
+          <i x-show="!analyzing" data-lucide="scan-search" class="h-4 w-4"></i>
+          <i x-show="analyzing" data-lucide="loader-circle" class="h-4 w-4 animate-spin"></i>
+          <span x-text="analyzing ? 'Analyzing...' : 'Analyze Manga'"></span>
+        </button>
+      </form>
+    </section>
+
+    <div x-show="loadingManga" x-cloak class="grid grid-cols-1 gap-5 lg:grid-cols-12 enter">
+      <div class="glass h-[520px] border border-[#26262E] lg:col-span-4"><div class="m-5 h-72 animate-pulse bg-[#232329]"></div><div class="mx-5 h-5 animate-pulse bg-[#232329]"></div></div>
+      <div class="glass h-[520px] border border-[#26262E] lg:col-span-8"><div class="m-5 h-10 animate-pulse bg-[#232329]"></div><div class="m-5 grid grid-cols-2 gap-3"> <template x-for="n in 8"><div class="h-16 animate-pulse bg-[#232329]"></div></template></div></div>
+    </div>
+
+    <main x-show="manga && !loadingManga" x-cloak class="grid grid-cols-1 gap-5 lg:grid-cols-12 enter">
+      <aside class="space-y-5 lg:col-span-4">
+        <section class="glass border border-pink-100">
+          <div class="grid grid-cols-[112px_1fr] gap-4 border-b border-[#26262E] p-4">
+            <img :src="proxyCover(manga?.cover_url)" referrerpolicy="no-referrer" class="h-[164px] w-full object-cover" :alt="manga?.title || 'Manga cover'" @error="coverError = true">
+            <div class="min-w-0 py-1">
+              <p class="mb-2 font-mono text-[10px] uppercase text-mint">Catalog Loaded</p>
+              <h2 class="line-clamp-3 text-xl font-bold leading-tight" x-text="manga?.title || ''"></h2>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <span class="border border-[#303039] bg-[#0C0C0F] px-2 py-1 font-mono text-[10px] text-zinc-400" x-text="manga?.author || ''"></span>
+                <span class="border border-mint/20 bg-mint/5 px-2 py-1 font-mono text-[10px] text-mint" x-text="manga?.status || ''"></span>
+              </div>
+              <p class="mt-4 font-mono text-xs text-zinc-500"><span class="text-zinc-200" x-text="manga?.total_chapters || 0"></span> CHAPTERS</p>
+            </div>
+          </div>
+          <div class="p-4">
+            <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold"><i data-lucide="settings-2" class="h-4 w-4 text-mint"></i> Export Settings</h3>
+            <label class="mb-2 block font-mono text-[10px] uppercase text-zinc-500">Output format</label>
+            <div class="mb-5 grid grid-cols-2 rounded-lg border border-pink-100 bg-pink-50/50 p-1">
+              <button @click="mode='merged'" class="flex min-h-16 items-center justify-center gap-2 rounded-md px-2 text-center text-xs transition" :class="mode==='merged' ? 'bg-sakura font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-white'"><i data-lucide="book-open" class="h-4 w-4 shrink-0"></i><span>One long PDF</span></button>
+              <button @click="mode='zip'" class="flex min-h-16 items-center justify-center gap-2 rounded-md px-2 text-center text-xs transition" :class="mode==='zip' ? 'bg-sakura font-bold text-white shadow-sm' : 'text-slate-500 hover:bg-white'"><i data-lucide="archive" class="h-4 w-4 shrink-0"></i><span>PDF per chapter (.ZIP)</span></button>
+            </div>
+            <div class="mb-5 flex items-center gap-3 border border-pink-100 bg-pink-50 px-3 py-3">
+              <i data-lucide="sparkles" class="h-4 w-4 text-sakura"></i>
+              <div><p class="text-xs font-bold text-inkblue">Best quality</p><p class="mt-0.5 text-[10px] text-slate-500">Original image resolution</p></div>
+            </div>
+            <button @click="startDownload" :disabled="selected.size===0 || jobActive" class="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-sakura font-bold text-white transition hover:bg-pink-500 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400" :class="selected.size ? 'anime-glow' : ''">
+              <i data-lucide="download" class="h-4 w-4"></i>
+              Download Selected (<span x-text="selected.size"></span>)
+            </button>
+          </div>
+        </section>
+      </aside>
+
+      <section class="glass min-w-0 border border-pink-100 lg:col-span-8">
+        <div class="border-b border-[#26262E] p-4">
+          <div class="mb-3 flex flex-col gap-3 xl:flex-row xl:items-center">
+            <div class="relative flex-1">
+              <i data-lucide="search" class="absolute left-3 top-3 h-4 w-4 text-zinc-500"></i>
+              <input x-model="search" type="search" placeholder="Search number or title..." class="h-10 w-full rounded-full border border-pink-100 bg-white pl-10 pr-3 text-sm outline-none focus:border-sakura focus:ring-2 focus:ring-pink-100">
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-[10px] text-slate-400">FROM</span><input x-model="rangeFrom" type="number" min="0" class="h-10 w-[76px] rounded-md border border-pink-100 bg-white px-2 text-center font-mono text-xs outline-none focus:border-sakura">
+              <i data-lucide="arrow-right" class="h-3.5 w-3.5 text-slate-300"></i><span class="font-mono text-[10px] text-slate-400">TO</span><input x-model="rangeTo" type="number" min="0" class="h-10 w-[76px] rounded-md border border-pink-100 bg-white px-2 text-center font-mono text-xs outline-none focus:border-sakura">
+              <button @click="applyRange" class="h-10 rounded-full border border-pink-200 px-3 font-mono text-[10px] font-semibold text-pink-600 hover:bg-pink-50">APPLY RANGE</button>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button @click="selectAll" class="batch-button"><i data-lucide="list-checks"></i>Select All</button>
+            <button @click="invertSelection" class="batch-button"><i data-lucide="shuffle"></i>Invert</button>
+            <button @click="clearSelection" class="batch-button"><i data-lucide="x"></i>Clear</button>
+            <button @click="sortAscending=!sortAscending" class="batch-button ml-auto"><i data-lucide="arrow-up-down"></i><span x-text="sortAscending ? 'Ch. 1 → N' : 'Ch. N → 1'"></span></button>
+          </div>
+          <div class="mt-3 flex items-center justify-between border border-pink-100 bg-pink-50/70 px-3 py-2">
+            <div class="flex items-center gap-2 text-xs"><span class="grid h-6 w-6 place-items-center bg-sakura text-white" x-text="selected.size"></span><span class="font-semibold" x-text="selected.size === 1 ? 'chapter selected' : 'chapters selected'"></span></div>
+            <span class="font-mono text-[10px] text-slate-500" x-text="selected.size ? selectedLabel : 'No chapters selected'"></span>
+          </div>
+        </div>
+        <div class="max-h-[520px] space-y-2 overflow-y-auto p-3">
+          <template x-for="chapter in filteredChapters" :key="chapter.id">
+            <div class="chapter-row flex min-h-[64px] cursor-pointer items-center gap-3 rounded-md border px-3 py-2 shadow-sm" :class="selected.has(chapter.id) ? 'border-sakura bg-pink-50 ring-2 ring-pink-100' : 'border-slate-200 bg-white hover:border-pink-200'" @click="toggleChapter(chapter, $event)">
+              <label class="relative grid h-5 w-5 shrink-0 place-items-center border transition" :class="selected.has(chapter.id) ? 'border-sakura bg-sakura text-white' : 'border-slate-300 bg-white'" @click.stop="toggleChapter(chapter, $event)"><i x-show="selected.has(chapter.id)" data-lucide="check" class="h-3.5 w-3.5"></i></label>
+              <div class="w-[72px] shrink-0 font-mono text-sm" :class="selected.has(chapter.id) ? 'text-pink-600' : 'text-slate-500'" x-text="formatNumber(chapter.number)"></div>
+              <div class="min-w-0 flex-1 truncate text-sm" :class="selected.has(chapter.id) ? 'font-semibold text-inkblue' : 'text-slate-600'" x-text="chapter.title"></div>
+              <span class="shrink-0 border px-2 py-1 font-mono text-[9px] uppercase" :class="statusClass(chapter.id)" x-text="chapterStatus(chapter.id)"></span>
+            </div>
+          </template>
+          <div x-show="filteredChapters.length===0" class="py-20 text-center font-mono text-xs text-zinc-500">No chapters match this filter.</div>
+        </div>
+      </section>
+    </main>
+
+    <section x-show="jobActive || jobState==='completed' || jobState==='failed'" x-cloak class="glass mt-5 border border-[#26262E] enter">
+      <div class="p-4">
+        <div class="mb-3 flex items-center justify-between gap-4">
+          <div>
+            <p class="font-mono text-[10px] uppercase text-mint" x-text="jobState"></p>
+            <p class="mt-1 text-sm text-zinc-300"><span x-text="progress.current_chapter || 'Preparing export'"></span> <span class="text-zinc-600">•</span> <span class="font-mono text-xs text-zinc-500" x-text="pageLabel"></span></p>
+          </div>
+          <button x-show="progress.file_url && jobState==='completed'" @click="saveFile" class="flex h-10 items-center gap-2 bg-mint px-4 font-bold text-[#07150c] mint-glow"><i data-lucide="save" class="h-4 w-4"></i>Save File to Disk</button>
+        </div>
+        <div class="mb-1 h-2 overflow-hidden bg-[#0C0C0F]"><div class="progress-fill h-full bg-mint mint-glow" :style="`width:${progress.overall_percent || 0}%`"></div></div>
+        <div class="flex justify-between font-mono text-[10px] text-zinc-500"><span>OVERALL</span><span x-text="(progress.overall_percent || 0) + '%'"></span></div>
+      </div>
+      <button @click="terminalOpen=!terminalOpen" class="flex w-full items-center gap-2 border-t border-[#26262E] px-4 py-3 text-left font-mono text-[10px] uppercase text-zinc-500"><i data-lucide="terminal" class="h-4 w-4"></i>Live terminal <i data-lucide="chevron-down" class="ml-auto h-3.5 w-3.5 transition" :class="terminalOpen ? 'rotate-180' : ''"></i></button>
+      <div x-show="terminalOpen" x-ref="terminal" class="max-h-44 overflow-y-auto rounded-b-lg bg-slate-900 px-4 py-3 font-mono text-[11px] leading-5 text-slate-300">
+        <template x-for="(log,index) in logs" :key="index"><div><span class="text-zinc-600">[<span x-text="timestamp(log.time)"></span>]</span> <span :class="jobState==='failed' ? 'text-red-400' : 'text-zinc-300'" x-text="log.message"></span></div></template>
+      </div>
+    </section>
+  </div>
+
+  <div class="fixed bottom-5 right-5 z-50 space-y-2">
+    <template x-for="toast in toasts" :key="toast.id"><div class="flex max-w-sm items-center gap-3 border border-[#303039] bg-charcoal px-4 py-3 text-sm shadow-2xl" :class="toast.type==='error' ? 'border-red-500/40' : 'border-mint/30'" x-transition><i :data-lucide="toast.type==='error' ? 'circle-alert' : 'circle-check'" class="h-4 w-4" :class="toast.type==='error' ? 'text-red-400' : 'text-mint'"></i><span x-text="toast.message"></span></div></template>
+  </div>
+
+  <style>.batch-button{display:flex;height:32px;align-items:center;gap:6px;border:1px solid #f3c9d8;border-radius:999px;padding:0 11px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b;background:white}.batch-button:hover{border-color:#ff7da8;color:#db2777;background:#fff7fa}.batch-button svg{height:14px;width:14px}</style>
+  <script>
+    function finishPageLoader() {
+      const loader = document.getElementById('page-loader');
+      const bar = document.getElementById('loader-bar');
+      const status = document.getElementById('loader-status');
+      if (!loader) return;
+      const steps = [[72, 'Sorting chapters...'], [100, 'Press ready!']];
+      steps.forEach(([width, text], index) => setTimeout(() => {
+        if (bar) bar.style.width = `${width}%`;
+        if (status) status.textContent = text;
+      }, 240 + index * 330));
+      setTimeout(() => loader.classList.add('is-leaving'), 1050);
+      setTimeout(() => loader.remove(), 1650);
+    }
+
+    function initializePressScene() {
+      const canvas = document.getElementById('press-scene');
+      if (!canvas || !window.THREE) return;
+      let renderer;
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+      } catch (_) {
+        canvas.style.display = 'none';
+        return;
+      }
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+      camera.position.set(0, 0.2, 8);
+      const group = new THREE.Group();
+      scene.add(group);
+
+      const coverMaterial = new THREE.MeshStandardMaterial({ color: 0xff7da8, roughness: 0.72 });
+      const pageMaterial = new THREE.MeshStandardMaterial({ color: 0xfffdf8, roughness: 0.88 });
+      const inkMaterial = new THREE.MeshStandardMaterial({ color: 0x26324a, roughness: 0.7 });
+      const cover = new THREE.Mesh(new THREE.BoxGeometry(3.2, 4.4, 0.18), coverMaterial);
+      group.add(cover);
+      const pageBlock = new THREE.Mesh(new THREE.BoxGeometry(3.02, 4.18, 0.34), pageMaterial);
+      pageBlock.position.z = 0.12;
+      group.add(pageBlock);
+      const spine = new THREE.Mesh(new THREE.BoxGeometry(0.16, 4.18, 0.38), inkMaterial);
+      spine.position.set(-1.58, 0, 0.12);
+      group.add(spine);
+      [-1.05, -0.52, 0, 0.52, 1.05].forEach((x, index) => {
+        const line = new THREE.Mesh(new THREE.BoxGeometry(index % 2 ? 1.65 : 1.95, 0.035, 0.022), inkMaterial);
+        line.position.set(x * 0.78 + 0.22, 1.25 - index * 0.52, 0.41);
+        line.rotation.z = index % 2 ? -0.05 : 0.05;
+        group.add(line);
+      });
+
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x7dcdd8, 2.4));
+      const keyLight = new THREE.DirectionalLight(0xffffff, 3);
+      keyLight.position.set(3, 5, 7);
+      scene.add(keyLight);
+      const pointer = new THREE.Vector2();
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      canvas.addEventListener('pointermove', event => {
+        const rect = canvas.getBoundingClientRect();
+        pointer.x = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
+        pointer.y = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
+      });
+
+      const resize = () => {
+        const rect = canvas.getBoundingClientRect();
+        renderer.setSize(rect.width, rect.height, false);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        camera.aspect = rect.width / Math.max(rect.height, 1);
+        camera.updateProjectionMatrix();
+      };
+      resize();
+      window.addEventListener('resize', resize);
+      const clock = new THREE.Clock();
+      const animate = () => {
+        const elapsed = clock.getElapsedTime();
+        if (!reducedMotion) {
+          group.rotation.x += (pointer.y * 0.16 + Math.sin(elapsed * 0.7) * 0.035 - group.rotation.x) * 0.045;
+          group.rotation.y += (pointer.x * 0.22 - group.rotation.y) * 0.045;
+          group.position.y = Math.sin(elapsed * 1.1) * 0.12;
+        }
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      };
+      animate();
+    }
+
+    function mangaPDF() {
+      return {
+        url: '', detectedSite: '', analyzing: false, loadingManga: false, manga: null, chapters: [], selected: new Set(), search: '', rangeFrom: '', rangeTo: '', sortAscending: true,
+        mode: 'merged', quality: 'original', lastClicked: null, jobActive: false, jobState: '', jobId: null, progress: {}, logs: [], terminalOpen: true, toasts: [], coverError: false,
+        init() {
+          this.$nextTick(() => {
+            lucide.createIcons();
+            initializePressScene();
+            finishPageLoader();
+          });
+        },
+        get filteredChapters() { const needle=String(this.search || '').toLowerCase().trim(); const items=this.chapters.filter(c => !needle || String(c.number || '').toLowerCase().includes(needle) || String(c.title || '').toLowerCase().includes(needle)); return [...items].sort((a,b)=>this.sortAscending ? parseFloat(a.number)-parseFloat(b.number) : parseFloat(b.number)-parseFloat(a.number)); },
+        get pageLabel() { return `Chapter ${this.progress.chapter_index || 0}/${this.progress.total_chapters || 0} • Page ${this.progress.pages_downloaded || 0}/${this.progress.total_pages || 0}`; },
+        get selectedLabel() { const numbers=this.selectedChapters.map(c=>Number.parseFloat(c.number)).filter(Number.isFinite).sort((a,b)=>a-b); if(!numbers.length)return ''; if(numbers.length===1)return `Ch. ${numbers[0]}`; const ranges=[]; let start=numbers[0], end=numbers[0]; for(let i=1;i<numbers.length;i++){ if(numbers[i]===end+1) end=numbers[i]; else {ranges.push(start===end?String(start):`${start}-${end}`); start=end=numbers[i];}} ranges.push(start===end?String(start):`${start}-${end}`); return `Ch. ${ranges.join(', ')}`; },
+        proxyCover(url) { return url ? `/api/proxy-image?url=${encodeURIComponent(url)}&referer=${encodeURIComponent(this.url)}` : ''; },
+        async pasteUrl() { try { this.url=await navigator.clipboard.readText(); this.detectedSite=new URL(this.url).hostname.replace(/^www\./,''); this.toast('URL pasted'); } catch { this.toast('Clipboard permission was denied','error'); } },
+        async analyze() { this.analyzing=true; this.loadingManga=true; this.manga=null; this.detectedSite=''; try { try { const parsed=new URL(this.url); this.detectedSite=parsed.hostname.replace(/^www\./,''); } catch { this.detectedSite='MangaFire search'; } const response=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:this.url})}); const data=await response.json(); if(!response.ok) throw new Error(data.detail || 'Analysis failed'); this.manga={...data}; this.chapters=data.chapters.map((c,i)=>({...c,id:c.id || `chapter-${i}-${c.number}`})); this.selected=new Set(); this.toast(`Loaded ${this.chapters.length} chapters`); } catch(error) { this.toast(error.message,'error'); } finally { if(this.manga) this.analyzing=false; this.loadingManga=false; this.$nextTick(()=>lucide.createIcons()); } },
+        toggleChapter(chapter,event) { const visible=this.filteredChapters; const checked=!this.selected.has(chapter.id); if(event.shiftKey && this.lastClicked) { const start=visible.findIndex(c=>c.id===this.lastClicked.id); const end=visible.findIndex(c=>c.id===chapter.id); if(start>=0 && end>=0) visible.slice(Math.min(start,end),Math.max(start,end)+1).forEach(c=>checked ? this.selected.add(c.id) : this.selected.delete(c.id)); } else { checked ? this.selected.add(chapter.id) : this.selected.delete(chapter.id); } this.lastClicked=chapter; this.selected=new Set(this.selected); },
+        selectAll(){ this.filteredChapters.forEach(c=>this.selected.add(c.id)); this.selected=new Set(this.selected); }, clearSelection(){ this.selected=new Set(); }, invertSelection(){ this.filteredChapters.forEach(c=>this.selected.has(c.id)?this.selected.delete(c.id):this.selected.add(c.id)); this.selected=new Set(this.selected); },
+        applyRange(){
+          const from=Number(this.rangeFrom), to=Number(this.rangeTo);
+          if(!Number.isFinite(from) || !Number.isFinite(to) || from>to || from<0) return this.toast('Enter a valid chapter range','error');
+          let count=0;
+          this.chapters.forEach(c=>{ const n=Number.parseFloat(c.number); if(Number.isFinite(n) && n>=from && n<=to){ this.selected.add(c.id); count++; } });
+          this.selected=new Set(this.selected);
+          this.toast(count ? `Selected ${count} chapters in range ${from}-${to}` : `No chapters found in range ${from}-${to}`, count ? 'success' : 'error');
+        },
+        formatNumber(n){return String(n).padStart(2,'0')}, chapterStatus(id){if(!this.jobId)return 'Queued'; if(this.progress.current_chapter && this.selectedChapters.some(c=>c.id===id && c.title===this.progress.current_chapter))return this.jobState==='completed'?'Done':'Fetching Pages...'; if(this.chapterStatuses[id])return this.chapterStatuses[id]; return 'Queued'},
+        statusClass(id){const status=this.chapterStatus(id); if(status==='Done'||status==='Compiled')return 'border-emerald-200 bg-emerald-50 text-emerald-600'; if(status.includes('Fetching'))return 'border-amber-200 bg-amber-50 text-amber-600'; return this.selected.has(id) ? 'border-pink-200 bg-pink-50 text-pink-600' : 'border-slate-200 bg-slate-50 text-slate-400'},
+        get selectedChapters(){return this.chapters.filter(c=>this.selected.has(c.id))}, get chapterStatuses(){return {}},
+        async startDownload(){ if(!this.selected.size || this.jobActive)return; const selected=this.selectedChapters; try { const response=await fetch('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chapters:selected,mode:this.mode,image_quality:this.quality,manga_title:this.manga?.title || 'TankoPress'})}); const data=await response.json(); if(!response.ok)throw new Error(data.detail || 'Could not start export'); this.jobId=data.job_id; this.jobState='queued'; this.jobActive=true; this.logs=[]; this.terminalOpen=true; this.openProgressStream(); this.toast('Export job started'); } catch(error){this.toast(error.message,'error')} },
+        openProgressStream(){const source=new EventSource(`/api/progress/${this.jobId}`); source.onmessage=(event)=>{const data=JSON.parse(event.data); this.progress=data; this.jobState=data.state; if(data.log_message)this.logs.push({time:new Date(),message:data.log_message}); if(data.state==='completed'||data.state==='failed'){this.jobActive=false; source.close(); this.toast(data.state==='completed'?'Export complete':'Export failed',data.state==='failed'?'error':'success'); this.$nextTick(()=>{this.$refs.terminal.scrollTop=this.$refs.terminal.scrollHeight;});}}; },
+        async saveFile(){
+          if(!this.progress.file_url)return;
+          try {
+            const response=await fetch(this.progress.file_url);
+            if(!response.ok){ const error=await response.json().catch(()=>({detail:'Export download failed'})); throw new Error(error.detail); }
+            const blob=await response.blob();
+            const disposition=response.headers.get('Content-Disposition') || '';
+            const match=disposition.match(/filename\*?=(?:UTF-8''|\")?([^\";]+)/i);
+            const filename=match ? decodeURIComponent(match[1].replace(/^UTF-8''/, '')) : (this.mode === 'zip' ? 'TankoPress.zip' : 'TankoPress.pdf');
+            const url=URL.createObjectURL(blob);
+            const link=document.createElement('a'); link.href=url; link.download=filename;
+            document.body.appendChild(link); link.click(); link.remove();
+            setTimeout(()=>URL.revokeObjectURL(url), 1000);
+          } catch(error){ this.toast(error.message, 'error'); }
+        },
+        timestamp(date){return new Date(date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})},
+        toast(message,type='success'){const id=Date.now()+Math.random();this.toasts.push({id,message,type});setTimeout(()=>this.toasts=this.toasts.filter(t=>t.id!==id),4200);}
+      }
+    }
+  </script>
+</body>
+</html>
