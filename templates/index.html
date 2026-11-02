@@ -21,7 +21,11 @@
     .glass { background: rgba(255,255,255,.94); backdrop-filter: blur(18px); box-shadow: 0 18px 50px rgba(83,63,90,.1); }
     .anime-glow { box-shadow: 0 9px 24px rgba(255,125,168,.22); }
     input[type="checkbox"] { accent-color: #FF7DA8; }
-    .progress-fill { transition: width .35s ease; }
+    .progress-fill { position: relative; overflow: hidden; transition: width .45s cubic-bezier(.2,.8,.2,1); background: linear-gradient(90deg,#ff8a68,#ff7da8 70%,#fff49a); box-shadow: 0 0 16px rgba(255,125,168,.55); }
+    .progress-fill::after { content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 20%,rgba(255,255,255,.65) 45%,transparent 70%); transform:translateX(-100%); animation:progressShine 1.4s linear infinite; }
+    @keyframes progressShine { to { transform:translateX(100%); } }
+    @keyframes saveReady { 0%,100% { transform:translateY(0) scale(1); box-shadow:0 8px 22px rgba(255,125,168,.28); } 50% { transform:translateY(-2px) scale(1.025); box-shadow:0 12px 30px rgba(255,125,168,.48); } }
+    .save-pdf-ready { animation:saveReady 1.8s ease-in-out infinite; }
     .chapter-row { transition: border-color .18s ease, background-color .18s ease, transform .18s ease, box-shadow .18s ease; }
     .chapter-row:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(83,63,90,.08); }
     ::selection { background: #FFB5CD; color: #26324A; }
@@ -198,9 +202,9 @@
             <p class="font-mono text-[10px] uppercase text-mint" x-text="jobState"></p>
             <p class="mt-1 text-sm text-zinc-300"><span x-text="progress.current_chapter || 'Preparing export'"></span> <span class="text-zinc-600">•</span> <span class="font-mono text-xs text-zinc-500" x-text="pageLabel"></span></p>
           </div>
-          <button x-show="progress.file_url && jobState==='completed'" @click="saveFile" class="flex h-10 items-center gap-2 bg-mint px-4 font-bold text-[#07150c] mint-glow"><i data-lucide="save" class="h-4 w-4"></i>Save File to Disk</button>
+          <button x-show="progress.file_url && jobState==='completed'" @click="saveFile" class="save-pdf-ready flex h-11 items-center gap-2 rounded-full bg-sakura px-5 font-bold text-white transition hover:bg-pink-500"><i data-lucide="save" class="h-4 w-4"></i>Save PDF</button>
         </div>
-        <div class="mb-1 h-2 overflow-hidden bg-[#0C0C0F]"><div class="progress-fill h-full bg-mint mint-glow" :style="`width:${progress.overall_percent || 0}%`"></div></div>
+        <div class="mb-1 h-3 overflow-hidden rounded-full border border-pink-100 bg-pink-100"><div class="progress-fill h-full rounded-full" :style="`width:${progress.overall_percent || 0}%`"></div></div>
         <div class="flex justify-between font-mono text-[10px] text-zinc-500"><span>OVERALL</span><span x-text="(progress.overall_percent || 0) + '%'"></span></div>
       </div>
       <button @click="terminalOpen=!terminalOpen" class="flex w-full items-center gap-2 border-t border-[#26262E] px-4 py-3 text-left font-mono text-[10px] uppercase text-zinc-500"><i data-lucide="terminal" class="h-4 w-4"></i>Live terminal <i data-lucide="chevron-down" class="ml-auto h-3.5 w-3.5 transition" :class="terminalOpen ? 'rotate-180' : ''"></i></button>
@@ -330,7 +334,7 @@
         statusClass(id){const status=this.chapterStatus(id); if(status==='Done'||status==='Compiled')return 'border-emerald-200 bg-emerald-50 text-emerald-600'; if(status.includes('Fetching'))return 'border-amber-200 bg-amber-50 text-amber-600'; return this.selected.has(id) ? 'border-pink-200 bg-pink-50 text-pink-600' : 'border-slate-200 bg-slate-50 text-slate-400'},
         get selectedChapters(){return this.chapters.filter(c=>this.selected.has(c.id))}, get chapterStatuses(){return {}},
         async startDownload(){ if(!this.selected.size || this.jobActive)return; const selected=this.selectedChapters; try { const response=await fetch('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chapters:selected,mode:this.mode,image_quality:this.quality,manga_title:this.manga?.title || 'TankoPress'})}); const data=await response.json(); if(!response.ok)throw new Error(data.detail || 'Could not start export'); this.jobId=data.job_id; this.jobState='queued'; this.jobActive=true; this.logs=[]; this.terminalOpen=true; this.openProgressStream(); this.toast('Export job started'); } catch(error){this.toast(error.message,'error')} },
-        openProgressStream(){const source=new EventSource(`/api/progress/${this.jobId}`); source.onmessage=(event)=>{const data=JSON.parse(event.data); this.progress=data; this.jobState=data.state; if(data.log_message)this.logs.push({time:new Date(),message:data.log_message}); if(data.state==='completed'||data.state==='failed'){this.jobActive=false; source.close(); this.toast(data.state==='completed'?'Export complete':'Export failed',data.state==='failed'?'error':'success'); this.$nextTick(()=>{this.$refs.terminal.scrollTop=this.$refs.terminal.scrollHeight;});}}; },
+        openProgressStream(){const source=new EventSource(`/api/progress/${this.jobId}`); source.onmessage=(event)=>{const data=JSON.parse(event.data); this.progress=data; this.jobState=data.state; if(data.log_message)this.logs.push({time:new Date(),message:data.log_message}); this.$nextTick(()=>{if(this.$refs.terminal)this.$refs.terminal.scrollTop=this.$refs.terminal.scrollHeight;}); if(data.state==='completed'||data.state==='failed'){this.jobActive=false; source.close(); this.toast(data.state==='completed'?'Export complete':'Export failed',data.state==='failed'?'error':'success');}}; },
         async saveFile(){
           if(!this.progress.file_url)return;
           try {
