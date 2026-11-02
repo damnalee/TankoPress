@@ -40,7 +40,16 @@ class GenericPlaywrightProvider(BaseMangaProvider):
         soup = BeautifulSoup(html, "lxml")
         og_title = soup.select_one('meta[property="og:title"]')
         title_node = soup.select_one("h1") or og_title
-        title = (title_node.get("content") if title_node and title_node.name == "meta" else title_node.get_text(" ", strip=True) if title_node else None) or urlparse(url).path.rstrip("/").split("/")[-1].replace("-", " ").title()
+        raw_title = (title_node.get("content") if title_node and title_node.name == "meta" else title_node.get_text(" ", strip=True) if title_node else None) or ""
+        placeholder_titles = {"MangaFire", "MangaFire - Read Manga Online Free", "Read Manga Online Free"}
+        if raw_title.strip() in placeholder_titles or raw_title.lower().startswith("mangafire -"):
+            raw_title = ""
+        if urlparse(url).hostname and urlparse(url).hostname.endswith("mangafire.to"):
+            slug = urlparse(url).path.rstrip("/").split("/")[-1]
+            raw_slug_title = re.sub(r"^[^-]+-", "", slug).replace("-", " ").title()
+            if raw_slug_title:
+                raw_title = raw_title or raw_slug_title
+        title = raw_title or urlparse(url).path.rstrip("/").split("/")[-1].replace("-", " ").title()
         og_image = soup.select_one('meta[property="og:image"]')
         cover_url = og_image["content"] if og_image and og_image.get("content") else ""
         if not cover_url:

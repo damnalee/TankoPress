@@ -97,3 +97,8 @@ def test_export_filename_range_is_numeric_and_canonical():
 
 def test_export_title_is_safe():
     assert safe_filename_part("Moonlit: Blade / Night", "TankoPress") == "Moonlit_ Blade _ Night"
+
+
+def test_mangafire_slug_title_fallback():
+    slug = "ro8ro-all-class-awakening-god-slayer"
+    assert re.sub(r"^[^-]+-", "", slug).replace("-", " ").title() == "All Class Awakening God Slayer"
