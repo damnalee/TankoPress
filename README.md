@@ -10,10 +10,6 @@ TankoPress is a FastAPI and Playwright application for turning manga catalogs in
 
 ![TankoPress desktop homepage](screenshots/homepage-desktop.png)
 
-### Mobile
-
-![TankoPress mobile homepage](screenshots/homepage-mobile.png)
-
 ## Features
 
 - Responsive manga-export homepage
