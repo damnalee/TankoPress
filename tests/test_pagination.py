@@ -3,6 +3,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 import re
 
+from main import chapter_filename_range, safe_filename_part
 from scraper.generic import GenericPlaywrightProvider
 
 
@@ -85,3 +86,14 @@ def test_hidden_api_page_url_preserves_vrf():
     assert "page=2" in page_2
     assert "limit=20" in page_2
     assert "vrf=token" in page_2
+
+
+def test_export_filename_range_is_numeric_and_canonical():
+    chapters = [{"number": "169"}, {"number": "12"}, {"number": "3.5"}]
+    assert chapter_filename_range(chapters) == "3.5-169"
+    assert chapter_filename_range([{"number": "12.0"}]) == "12"
+    assert chapter_filename_range([{"number": "12"}, {"number": "12"}]) == "12"
+
+
+def test_export_title_is_safe():
+    assert safe_filename_part("Moonlit: Blade / Night", "TankoPress") == "Moonlit_ Blade _ Night"

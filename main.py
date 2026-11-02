@@ -43,6 +43,35 @@ class DownloadRequest(BaseModel):
     manga_title: str = "TankoPress"
 
 
+def safe_filename_part(value: str, fallback: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9._ -]+", "_", value).strip(" .")
+    return cleaned or fallback
+
+
+def chapter_filename_range(chapters: list[dict]) -> str:
+    numbers = []
+    for chapter in chapters:
+        raw_number = chapter.get("number")
+        if raw_number is None:
+            continue
+        try:
+            value = float(raw_number)
+            numbers.append((value, str(raw_number)))
+        except (TypeError, ValueError):
+            continue
+    if not numbers:
+        return ""
+    unique_numbers = {value: label for value, label in numbers}
+    ordered_numbers = sorted(unique_numbers.items())
+    if len(ordered_numbers) == 1:
+        return ordered_numbers[0][1].rstrip("0").rstrip(".") if "." in ordered_numbers[0][1] else ordered_numbers[0][1]
+    minimum_value, minimum_label = ordered_numbers[0]
+    maximum_value, maximum_label = ordered_numbers[-1]
+    start = minimum_label.rstrip("0").rstrip(".") if "." in minimum_label else minimum_label
+    end = maximum_label.rstrip("0").rstrip(".") if "." in maximum_label else maximum_label
+    return f"{start}-{end}"
+
+
 def public_job(job_id: str) -> dict:
     job = jobs[job_id]
     return {key: value for key, value in job.items() if key != "error_detail"}
@@ -107,7 +136,7 @@ async def run_download_job(job_id: str, chapters: list[dict], mode: str, quality
                 images = [image for image in downloaded if image is not None]
                 compiled_chapters.append((chapter_name, images))
                 publish(job_id, {"log_message": f"Compiled {chapter_name} ({len(images)} pages)"})
-            safe_title = re.sub(r"[^A-Za-z0-9._ -]+", "_", jobs[job_id].get("title", "TankoPress")).strip() or "TankoPress"
+            safe_title = safe_filename_part(jobs[job_id].get("title", "TankoPress"), "TankoPress")
         if mode == "zip":
             filename = f"{safe_title}.zip"
             final_path = job_dir / filename
@@ -115,13 +144,8 @@ async def run_download_job(job_id: str, chapters: list[dict], mode: str, quality
             for helper in job_dir.glob(f"{filename}.*.pdf"):
                 helper.unlink(missing_ok=True)
         else:
-            numbered_chapters = sorted(
-                (chapter for chapter in chapters if chapter.get("number") is not None),
-                key=lambda chapter: float(chapter["number"]),
-            )
-            chapter_numbers = [str(chapter["number"]) for chapter in numbered_chapters]
-            range_label = chapter_numbers[0] if len(chapter_numbers) == 1 else f"{chapter_numbers[0]}-{chapter_numbers[-1]}"
-            filename = f"{safe_title} {range_label}.pdf"
+            range_label = chapter_filename_range(chapters)
+            filename = f"{safe_title} {range_label}.pdf" if range_label else f"{safe_title}.pdf"
             final_path = job_dir / filename
             processor.merge_chapters(compiled_chapters, str(final_path), quality)
         publish(job_id, {"state": "completed", "overall_percent": 100, "filename": filename,
