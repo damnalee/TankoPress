@@ -20,13 +20,15 @@ from starlette.requests import Request
 from pdf_engine import PDFProcessor
 from scraper import GenericPlaywrightProvider
 
+BASE_DIR = Path(__file__).resolve().parent
+
 app = FastAPI(title="TankoPress", version="1.0.0")
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 provider = GenericPlaywrightProvider()
 processor = PDFProcessor()
-output_root = Path("output")
-output_root.mkdir(exist_ok=True)
+output_root = Path("/tmp/tankopress") if Path("/tmp").is_dir() else BASE_DIR / "output"
+output_root.mkdir(parents=True, exist_ok=True)
 
 USER_AGENTS = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",

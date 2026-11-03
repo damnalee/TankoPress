@@ -99,7 +99,15 @@ Manga Name.zip
 
 TankoPress needs a backend. A static host alone cannot run FastAPI, Playwright, scraping, image downloads, PDF generation, or background export jobs.
 
-Deploy the full Python application to a VPS, Railway, Render, or another service that supports long-running Python processes. See [DEPLOYMENT.md](DEPLOYMENT.md).
+### Vercel
+
+1. Import the repository in Vercel as a Python project.
+2. Deploy without overriding the framework settings; [vercel.json](vercel.json) configures the Python function and Chromium build dependency.
+3. The Python function is limited by serverless execution time and memory, so use a long-running deployment for large exports.
+
+### Other hosts
+
+Deploy the full Python application to a VPS, Railway, Render, or another service that supports persistent processes. See [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Legal and Responsible Use
 

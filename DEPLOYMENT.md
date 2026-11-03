@@ -37,6 +37,12 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 
 Place a reverse proxy such as Caddy or Nginx in front of Uvicorn and enable HTTPS. Set an appropriate timeout for background downloads and streamed progress events.
 
+## Vercel
+
+This repository includes [vercel.json](vercel.json), which routes requests to the FastAPI ASGI app and installs Playwright Chromium during the build.
+
+Import the repository in Vercel and deploy. Serverless functions have ephemeral storage and finite execution limits: generated files are written to `/tmp`, while in-memory job and SSE state can be lost when an instance is recycled or a request is routed to another instance. Vercel is therefore best suited for catalog analysis and smaller exports; use VPS, Railway, Render, or another persistent process host for dependable large or queued exports.
+
 ## Render or Railway
 
 Use a Python web service and run:
