@@ -61,6 +61,19 @@ Windows PowerShell activation:
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
+## MangaFire and local mode
+
+Some catalog hosts reject requests from serverless data-center IP addresses. In particular, MangaFire may return HTTP 403 to the hosted Vercel backend even when the same page is reachable from your Mac. TankoPress does not attempt to bypass that restriction.
+
+On macOS, use the local app for sources that reject Vercel:
+
+1. Open this project folder in Finder.
+2. Double-click start_local.command (approve the macOS prompt if shown).
+3. Open http://127.0.0.1:8000.
+4. Keep the Terminal window open while analyzing and exporting.
+
+The local app makes source requests from your Mac's network. The public Vercel deployment remains available for sources that permit cloud-hosted requests.
+
 ## Production
 
 Run the application with a production server or process manager:

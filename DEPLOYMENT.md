@@ -37,6 +37,10 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 
 Place a reverse proxy such as Caddy or Nginx in front of Uvicorn and enable HTTPS. Set an appropriate timeout for background downloads and streamed progress events.
 
+## macOS local mode for source-specific 403 responses
+
+A source may be reachable from a user's Mac but reject requests from a serverless hosting provider. This is an upstream access restriction, not an application runtime failure. Do not try to defeat the source's access controls. For a source that permits requests from the Mac's network, run TankoPress locally with ./start_local.command and open http://127.0.0.1:8000. Keep the terminal session running while using the app.
+
 ## Vercel
 
 This repository includes [vercel.json](vercel.json), which routes requests to the FastAPI ASGI app and installs Playwright Chromium during the build.

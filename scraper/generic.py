@@ -22,7 +22,19 @@ class GenericPlaywrightProvider(BaseMangaProvider):
         headers = {"User-Agent": random.choice(USER_AGENTS), "Accept-Language": "en-US,en;q=0.9"}
         async with httpx.AsyncClient(headers=headers, follow_redirects=True, timeout=30) as client:
             response = await client.get(url)
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                hostname = (urlparse(url).hostname or "").lower()
+                if exc.response.status_code == 403 and hostname.endswith("mangafire.to"):
+                    raise RuntimeError(
+                        "MangaFire rejected the request from this server's network. "
+                        "The same page is reachable from your Mac, so use TankoPress locally: "
+                        "open the TankoPress project folder, run start_local.command, then visit "
+                        "http://127.0.0.1:8000. The hosted Vercel app cannot fetch this source "
+                        "while MangaFire blocks Vercel's server IP."
+                    ) from exc
+                raise
             return response.text
 
     async def _rendered_html(self, url: str) -> str:
